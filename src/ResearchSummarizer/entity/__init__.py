@@ -7,3 +7,10 @@ class DataIngestionConfig:
     source_url: Path
     local_data_file: Path
     unzip_dir : Path
+
+@dataclass
+class DataTransformationsConfig:
+    root_dir: Path
+    data_path : Path
+    tokenizer_name: Path
+    

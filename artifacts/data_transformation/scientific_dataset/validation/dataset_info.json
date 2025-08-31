@@ -1,0 +1,155 @@
+{
+  "builder_name": "parquet",
+  "citation": "",
+  "config_name": "section",
+  "dataset_name": "arxiv-summarization",
+  "dataset_size": 7639488377,
+  "description": "",
+  "download_checksums": {
+    "hf://datasets/ccdv/arxiv-summarization@240aaf1a969b3f8cd0ade6986bfad0cd730ee288/section/train-00000-of-00015.parquet": {
+      "num_bytes": 229594302,
+      "checksum": null
+    },
+    "hf://datasets/ccdv/arxiv-summarization@240aaf1a969b3f8cd0ade6986bfad0cd730ee288/section/train-00001-of-00015.parquet": {
+      "num_bytes": 228483557,
+      "checksum": null
+    },
+    "hf://datasets/ccdv/arxiv-summarization@240aaf1a969b3f8cd0ade6986bfad0cd730ee288/section/train-00002-of-00015.parquet": {
+      "num_bytes": 227983974,
+      "checksum": null
+    },
+    "hf://datasets/ccdv/arxiv-summarization@240aaf1a969b3f8cd0ade6986bfad0cd730ee288/section/train-00003-of-00015.parquet": {
+      "num_bytes": 226907293,
+      "checksum": null
+    },
+    "hf://datasets/ccdv/arxiv-summarization@240aaf1a969b3f8cd0ade6986bfad0cd730ee288/section/train-00004-of-00015.parquet": {
+      "num_bytes": 226392986,
+      "checksum": null
+    },
+    "hf://datasets/ccdv/arxiv-summarization@240aaf1a969b3f8cd0ade6986bfad0cd730ee288/section/train-00005-of-00015.parquet": {
+      "num_bytes": 226931821,
+      "checksum": null
+    },
+    "hf://datasets/ccdv/arxiv-summarization@240aaf1a969b3f8cd0ade6986bfad0cd730ee288/section/train-00006-of-00015.parquet": {
+      "num_bytes": 228596794,
+      "checksum": null
+    },
+    "hf://datasets/ccdv/arxiv-summarization@240aaf1a969b3f8cd0ade6986bfad0cd730ee288/section/train-00007-of-00015.parquet": {
+      "num_bytes": 229846795,
+      "checksum": null
+    },
+    "hf://datasets/ccdv/arxiv-summarization@240aaf1a969b3f8cd0ade6986bfad0cd730ee288/section/train-00008-of-00015.parquet": {
+      "num_bytes": 230388735,
+      "checksum": null
+    },
+    "hf://datasets/ccdv/arxiv-summarization@240aaf1a969b3f8cd0ade6986bfad0cd730ee288/section/train-00009-of-00015.parquet": {
+      "num_bytes": 228027386,
+      "checksum": null
+    },
+    "hf://datasets/ccdv/arxiv-summarization@240aaf1a969b3f8cd0ade6986bfad0cd730ee288/section/train-00010-of-00015.parquet": {
+      "num_bytes": 229472090,
+      "checksum": null
+    },
+    "hf://datasets/ccdv/arxiv-summarization@240aaf1a969b3f8cd0ade6986bfad0cd730ee288/section/train-00011-of-00015.parquet": {
+      "num_bytes": 231347864,
+      "checksum": null
+    },
+    "hf://datasets/ccdv/arxiv-summarization@240aaf1a969b3f8cd0ade6986bfad0cd730ee288/section/train-00012-of-00015.parquet": {
+      "num_bytes": 230123135,
+      "checksum": null
+    },
+    "hf://datasets/ccdv/arxiv-summarization@240aaf1a969b3f8cd0ade6986bfad0cd730ee288/section/train-00013-of-00015.parquet": {
+      "num_bytes": 230000935,
+      "checksum": null
+    },
+    "hf://datasets/ccdv/arxiv-summarization@240aaf1a969b3f8cd0ade6986bfad0cd730ee288/section/train-00014-of-00015.parquet": {
+      "num_bytes": 234787773,
+      "checksum": null
+    },
+    "hf://datasets/ccdv/arxiv-summarization@240aaf1a969b3f8cd0ade6986bfad0cd730ee288/section/validation-00000-of-00001.parquet": {
+      "num_bytes": 105108695,
+      "checksum": null
+    },
+    "hf://datasets/ccdv/arxiv-summarization@240aaf1a969b3f8cd0ade6986bfad0cd730ee288/section/test-00000-of-00001.parquet": {
+      "num_bytes": 105458672,
+      "checksum": null
+    }
+  },
+  "download_size": 3649452807,
+  "features": {
+    "article": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "abstract": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "input_ids": {
+      "feature": {
+        "dtype": "int32",
+        "_type": "Value"
+      },
+      "_type": "List"
+    },
+    "attention_mask": {
+      "feature": {
+        "dtype": "int8",
+        "_type": "Value"
+      },
+      "_type": "List"
+    },
+    "labels": {
+      "feature": {
+        "dtype": "int64",
+        "_type": "Value"
+      },
+      "_type": "List"
+    }
+  },
+  "homepage": "",
+  "license": "",
+  "size_in_bytes": 11288941184,
+  "splits": {
+    "train": {
+      "name": "train",
+      "num_bytes": 7201498856,
+      "num_examples": 203037,
+      "shard_lengths": [
+        14536,
+        14536,
+        14536,
+        14536,
+        14536,
+        14536,
+        14536,
+        14536,
+        14536,
+        14536,
+        14536,
+        14536,
+        14535,
+        14070
+      ],
+      "dataset_name": "arxiv-summarization"
+    },
+    "validation": {
+      "name": "validation",
+      "num_bytes": 218793173,
+      "num_examples": 6436,
+      "dataset_name": "arxiv-summarization"
+    },
+    "test": {
+      "name": "test",
+      "num_bytes": 219196348,
+      "num_examples": 6440,
+      "dataset_name": "arxiv-summarization"
+    }
+  },
+  "version": {
+    "version_str": "0.0.0",
+    "major": 0,
+    "minor": 0,
+    "patch": 0
+  }
+}

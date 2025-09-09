@@ -36,3 +36,11 @@ class ModelTrainerConfig:
     load_best_model_at_end: bool
     metric_for_best_model: str
     report_to: str
+
+@dataclass(frozen=True)
+class ModelEvaluationConfig:
+    root_dir : Path
+    data_path : Path
+    model_path : Path 
+    tokenizer_path: Path 
+    metric_file_name: Path

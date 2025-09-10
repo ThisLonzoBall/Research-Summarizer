@@ -46,13 +46,12 @@ class PredictionPipeline:
         return chunks
 
     def predict(self, text: str) -> str:
-        if self._token_len(text) <= self.max_input_tokens:
-            return self.pipe(text, **self.gen_kwargs)[0]["summary_text"].strip()
-        chunks = self._chunk_text(text)
-        partial_summaries = [
-            self.pipe(chunk, **self.gen_kwargs)[0]["summary_text"].strip()
-            for chunk in chunks
-        ]
-        joined = "\n".join(partial_summaries)
-        final_summary = self.pipe(joined, **self.gen_kwargs)[0]["summary_text"].strip()
-        return final_summary
+        if self._token_len(text) > self.max_input_tokens:
+            chunks = self._chunk_text(text)
+            partials = [
+                self.pipe(c, **self.gen_kwargs)[0]["summary_text"].strip()
+                for c in chunks
+            ]
+            joined = "\n".join(partials)
+            return self.pipe(joined, **self.gen_kwargs)[0]["summary_text"].strip()
+        return self.pipe(text, **self.gen_kwargs)[0]["summary_text"].strip()

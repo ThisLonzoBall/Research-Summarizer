@@ -48,7 +48,7 @@ class ModelEvaluation:
             rouge.add_batch(predictions=predictions, references=reference_batch)
 
         scores = rouge.compute(use_stemmer=True)
-        return {k: round(scores[k] * 100, 2) for k in ROUGE_KEYS}
+        return {k: round(float(scores[k]) * 100, 2) for k in ROUGE_KEYS}
 
     def evaluate(self) -> dict:
         test = load_from_disk(self.config.data_path)["test"]

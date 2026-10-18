@@ -39,13 +39,14 @@ class PredictionPipeline:
         self.pipe = pipeline("summarization", model=model, tokenizer=self.tokenizer, device=0 if use_cuda else -1)
         self.gen_kwargs = {
             "num_beams": num_beams,
-            "max_new_tokens": max_new_tokens,
+            "max_new_tokens": min(max_new_tokens, model.config.max_position_embeddings),
             "length_penalty": length_penalty,
             "early_stopping": True,
             "truncation": True,
         }
         # Leave room for the EOS token the tokenizer appends.
-        self.max_input_tokens = min(self.tokenizer.model_max_length or MAX_INPUT_TOKENS, MAX_INPUT_TOKENS) - 1
+        context = min(self.tokenizer.model_max_length or MAX_INPUT_TOKENS, model.config.max_position_embeddings)
+        self.max_input_tokens = min(context, MAX_INPUT_TOKENS) - 1
 
     def _token_ids(self, text: str) -> list[int]:
         return self.tokenizer(text, add_special_tokens=False)["input_ids"]

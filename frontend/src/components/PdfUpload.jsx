@@ -22,17 +22,17 @@ export default function PdfUpload({ onSubmit, loading }) {
 
   return (
     <div className="flex items-center gap-3">
-      {/* Hidden file input */}
+      {/* Hidden file input (native Choose File button removed) */}
       <input
         ref={inputRef}
         type="file"
         accept="application/pdf"
         onChange={pick}
         aria-label="Upload PDF"
-        className="hidden"
+        hidden // ✅ this hides the "Choose File" control
       />
 
-      {/* Custom Add button */}
+      {/* Custom Add PDF button */}
       <button
         type="button"
         onClick={triggerInput}
@@ -65,5 +65,6 @@ export default function PdfUpload({ onSubmit, loading }) {
     </div>
   );
 }
+
 
 

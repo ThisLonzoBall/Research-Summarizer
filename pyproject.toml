@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ResearchSummarizer"
+version = "0.1.0"
+description = "Abstractive research paper summarization with a Pegasus model fine-tuned on arXiv, served via FastAPI and React."
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "Rahul Wadhwa", email = "rahulwadhwa1892@gmail.com" }]
+requires-python = ">=3.10"
+
+[project.urls]
+Repository = "https://github.com/ThisLonzoBall/Research-Summarizer"
+Issues = "https://github.com/ThisLonzoBall/Research-Summarizer/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+extend-exclude = ["notebooks", "research", "venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM"]
+ignore = ["B008"]  # FastAPI's File()/Query() defaults
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

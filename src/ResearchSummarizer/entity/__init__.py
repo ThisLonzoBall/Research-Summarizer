@@ -1,46 +1,43 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
-@dataclass
+
+@dataclass(frozen=True)
 class DataIngestionConfig:
     root_dir: Path
-    source_url: Path
-    local_data_file: Path
-    unzip_dir : Path
+    dataset_name: str
+    dataset_config: str
+    save_dir: Path
+    split_sizes: dict[str, int]
 
-@dataclass
-class DataTransformationsConfig:
+
+@dataclass(frozen=True)
+class DataTransformationConfig:
     root_dir: Path
-    data_path : Path
-    tokenizer_name: Path
-    
-@dataclass
+    data_path: Path
+    tokenizer_name: str
+    save_dir: Path
+    max_input_length: int
+    max_target_length: int
+
+
+@dataclass(frozen=True)
 class ModelTrainerConfig:
     root_dir: Path
     data_path: Path
-    model_ckpt: Path
-    num_train_epochs: int
-    per_device_train_batch_size: int
-    per_device_eval_batch_size: int
-    evaluation_strategy: str
-    eval_steps: int
-    save_strategy: str
-    save_steps: int
-    learning_rate: float
-    warmup_steps: int
-    weight_decay: float
-    logging_steps: int
-    fp16: bool
-    gradient_accumulation_steps: int
-    predict_with_generate: bool
-    load_best_model_at_end: bool
-    metric_for_best_model: str
-    report_to: str
+    model_ckpt: str
+    model_dir: Path
+    training_args: dict = field(default_factory=dict)
+
 
 @dataclass(frozen=True)
 class ModelEvaluationConfig:
-    root_dir : Path
-    data_path : Path
-    model_path : Path 
-    tokenizer_path: Path 
+    root_dir: Path
+    data_path: Path
+    base_model: str
+    model_path: Path
     metric_file_name: Path
+    num_samples: int
+    batch_size: int
+    max_input_length: int
+    generation: dict = field(default_factory=dict)

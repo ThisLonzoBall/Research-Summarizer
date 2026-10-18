@@ -1,85 +1,72 @@
-from src.ResearchSummarizer.constants import *
-from src.ResearchSummarizer.utils.common import read_yaml, create_directories
+from pathlib import Path
 
-from src.ResearchSummarizer.entity import DataIngestionConfig, ModelEvaluationConfig, DataTransformationsConfig, ModelTrainerConfig
+from ResearchSummarizer.constants import CONFIG_FILE_PATH, PARAMS_FILE_PATH
+from ResearchSummarizer.entity import (
+    DataIngestionConfig,
+    DataTransformationConfig,
+    ModelEvaluationConfig,
+    ModelTrainerConfig,
+)
+from ResearchSummarizer.utils.common import create_directories, read_yaml
+
 
 class ConfigurationManager:
-    def __init__(self, config_filepath=CONFIG_FILE_PATH, params_filepath=PARAMS_FILE_PATH):
+    def __init__(self, config_filepath: Path = CONFIG_FILE_PATH, params_filepath: Path = PARAMS_FILE_PATH):
         self.config = read_yaml(config_filepath)
         self.params = read_yaml(params_filepath)
         create_directories([self.config.artifacts_root])
 
-    def get_data_ingestion_config(self):
+    def get_data_ingestion_config(self) -> DataIngestionConfig:
         config = self.config.data_ingestion
+        data = self.params.data
         create_directories([config.root_dir])
         return DataIngestionConfig(
-            root_dir=config.root_dir,
-            source_url=config.source_url,
-            local_data_file=config.local_data_file,
-            unzip_dir=config.unzip_dir
-        )
-    
-    def get_data_transformations_config(self) -> DataTransformationsConfig:
-        config= self.config.data_transformation
-
-        create_directories([config.root_dir])
-
-        data_transformation_config = DataTransformationsConfig(
-            root_dir=config.root_dir,
-            data_path= config.data_path,
-            tokenizer_name= config.tokenizer_name
+            root_dir=Path(config.root_dir),
+            dataset_name=config.dataset_name,
+            dataset_config=config.dataset_config,
+            save_dir=Path(config.save_dir),
+            split_sizes={
+                "train": data.train_samples,
+                "validation": data.validation_samples,
+                "test": data.test_samples,
+            },
         )
 
-        return data_transformation_config
-    
-    def get_model_trainer_config(self)  ->  ModelTrainerConfig:
-        config=self.config.model_trainer
-        params=self.params.TrainingArguments
-
+    def get_data_transformation_config(self) -> DataTransformationConfig:
+        config = self.config.data_transformation
+        data = self.params.data
         create_directories([config.root_dir])
+        return DataTransformationConfig(
+            root_dir=Path(config.root_dir),
+            data_path=Path(config.data_path),
+            tokenizer_name=config.tokenizer_name,
+            save_dir=Path(config.save_dir),
+            max_input_length=data.max_input_length,
+            max_target_length=data.max_target_length,
+        )
 
-        model_trainer_config = ModelTrainerConfig(
-            root_dir=config.root_dir,
-            data_path=config.data_path,
+    def get_model_trainer_config(self) -> ModelTrainerConfig:
+        config = self.config.model_trainer
+        create_directories([config.root_dir])
+        return ModelTrainerConfig(
+            root_dir=Path(config.root_dir),
+            data_path=Path(config.data_path),
             model_ckpt=config.model_ckpt,
-            num_train_epochs= params.num_train_epochs,
-            per_device_train_batch_size= params.per_device_train_batch_size,
-            per_device_eval_batch_size= params.per_device_eval_batch_size,
-            evaluation_strategy= params.evaluation_strategy,
-            eval_steps= params.eval_steps,
-            save_strategy= params.save_strategy,
-            save_steps= params.save_steps,
-            learning_rate= params.learning_rate,
-            warmup_steps = params.warmup_steps,
-            weight_decay = params.weight_decay,
-            logging_steps = params.logging_steps,
-            fp16 = params.fp16,
-            gradient_accumulation_steps= params.gradient_accumulation_steps,
-            predict_with_generate= params.predict_with_generate,
-            load_best_model_at_end= params.load_best_model_at_end,
-            metric_for_best_model= params.metric_for_best_model,
-            report_to = params.report_to,
-
-                
+            model_dir=Path(config.model_dir),
+            training_args=self.params.TrainingArguments.to_dict(),
         )
-        return model_trainer_config
-    
+
     def get_model_evaluation_config(self) -> ModelEvaluationConfig:
         config = self.config.model_evaluation
-
         create_directories([config.root_dir])
-
-        model_evaluation_config = ModelEvaluationConfig(
-            root_dir=config.root_dir,
-            data_path=config.data_path,
-            model_path=config.model_path,
-            tokenizer_path=config.tokenizer_path,
-            metric_file_name=config.metric_file_name
+        return ModelEvaluationConfig(
+            root_dir=Path(config.root_dir),
+            data_path=Path(config.data_path),
+            base_model=config.base_model,
+            model_path=Path(config.model_path),
+            metric_file_name=Path(config.metric_file_name),
+            num_samples=self.params.evaluation.num_samples,
+            batch_size=self.params.evaluation.batch_size,
+            max_input_length=self.params.data.max_input_length,
+            generation=self.params.generation.to_dict(),
         )
-
-        return model_evaluation_config
-
-
-
-
-

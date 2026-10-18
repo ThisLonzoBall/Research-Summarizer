@@ -1,24 +1,34 @@
-import os
-import urllib.request as request
-import zipfile
-from src.ResearchSummarizer.logging import logger
+from datasets import Dataset, DatasetDict, load_dataset
 
-from src.ResearchSummarizer.entity import DataIngestionConfig
+from ResearchSummarizer.entity import DataIngestionConfig
+from ResearchSummarizer.logging import logger
+
 
 class DataIngestion:
     def __init__(self, config: DataIngestionConfig):
         self.config = config
 
-    def download_file(self):
-        if not os.path.exists(self.config.local_data_file):
-            request.urlretrieve(self.config.source_url, self.config.local_data_file)
-            logger.info(f"File downloaded to {self.config.local_data_file}")
-        else:
-            logger.info("File already exists.")
+    def download_dataset(self) -> DatasetDict:
+        """Stream the first N examples of each split from the Hugging Face Hub.
 
-    def extract_zip_file(self):
-        os.makedirs(self.config.unzip_dir, exist_ok=True)
-        with zipfile.ZipFile(self.config.local_data_file, 'r') as zip_ref:
-            zip_ref.extractall(self.config.unzip_dir)
-            logger.info(f"Extracted zip file to {self.config.unzip_dir}")
-    
+        Streaming avoids downloading the full ~7GB arXiv corpus when only a subset is needed.
+        """
+        if self.config.save_dir.exists():
+            logger.info(f"Dataset already present at {self.config.save_dir}, skipping download.")
+            return DatasetDict.load_from_disk(self.config.save_dir)
+
+        splits = {}
+        for split, n in self.config.split_sizes.items():
+            logger.info(f"Streaming {n} examples from {self.config.dataset_name} [{split}]")
+            stream = load_dataset(
+                self.config.dataset_name,
+                self.config.dataset_config,
+                split=split,
+                streaming=True,
+            )
+            splits[split] = Dataset.from_list(list(stream.take(n)))
+
+        dataset = DatasetDict(splits)
+        dataset.save_to_disk(self.config.save_dir)
+        logger.info(f"Saved dataset to {self.config.save_dir}: {dataset}")
+        return dataset

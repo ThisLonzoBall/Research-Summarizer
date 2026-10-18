@@ -1,57 +1,71 @@
-from src.ResearchSummarizer.config.configuration import ConfigurationManager
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
+import os
+from pathlib import Path
+
 import torch
+from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, pipeline
+
+from ResearchSummarizer.logging import logger
+
+LOCAL_MODEL_DIR = "artifacts/model_trainer/pegasus-arxiv"
+BASE_MODEL_ID = "google/pegasus-cnn_dailymail"
+
+MAX_INPUT_TOKENS = 1024
+CHUNK_OVERLAP_TOKENS = 100
+MAX_REDUCE_ROUNDS = 3
+
+
+def resolve_model_id() -> str:
+    """MODEL_ID env var (Hub repo or path) > local fine-tuned model > base checkpoint."""
+    if model_id := os.getenv("MODEL_ID"):
+        return model_id
+    if Path(LOCAL_MODEL_DIR).exists():
+        return LOCAL_MODEL_DIR
+    logger.warning(f"No fine-tuned model found at {LOCAL_MODEL_DIR}; falling back to {BASE_MODEL_ID}")
+    return BASE_MODEL_ID
+
 
 class PredictionPipeline:
-    def __init__(self, num_beams=4, max_new_tokens=128, length_penalty=0.8):
-        self.config = ConfigurationManager().get_model_evaluation_config()
-        device = 0 if torch.cuda.is_available() else -1
-        torch_dtype = torch.float16 if torch.cuda.is_available() else None
-        self.tokenizer = AutoTokenizer.from_pretrained(self.config.tokenizer_path)
-        self.model = AutoModelForSeq2SeqLM.from_pretrained(
-            self.config.model_path,
-            torch_dtype=torch_dtype
-        )
-        self.pipe = pipeline(
-            "summarization",
-            model=self.model,
-            tokenizer=self.tokenizer,
-            device=device
-        )
+    """Summarizes arbitrarily long text with map-reduce over overlapping token windows."""
+
+    def __init__(self, model_id: str | None = None, num_beams: int = 4, max_new_tokens: int = 256,
+                 length_penalty: float = 0.8):
+        self.model_id = model_id or resolve_model_id()
+        use_cuda = torch.cuda.is_available()
+        logger.info(f"Loading summarization model {self.model_id} on {'cuda' if use_cuda else 'cpu'}")
+
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_id)
+        model = AutoModelForSeq2SeqLM.from_pretrained(self.model_id)
+        self.pipe = pipeline("summarization", model=model, tokenizer=self.tokenizer, device=0 if use_cuda else -1)
         self.gen_kwargs = {
             "num_beams": num_beams,
             "max_new_tokens": max_new_tokens,
             "length_penalty": length_penalty,
             "early_stopping": True,
+            "truncation": True,
         }
-        self.max_input_tokens = min(
-            getattr(self.tokenizer, "model_max_length", 1024) or 1024,
-            1024
-        )
-        self.chunk_overlap = 100
+        # Leave room for the EOS token the tokenizer appends.
+        self.max_input_tokens = min(self.tokenizer.model_max_length or MAX_INPUT_TOKENS, MAX_INPUT_TOKENS) - 1
 
-    def _token_len(self, text: str) -> int:
-        return len(self.tokenizer(text, add_special_tokens=False)["input_ids"])
+    def _token_ids(self, text: str) -> list[int]:
+        return self.tokenizer(text, add_special_tokens=False)["input_ids"]
 
-    def _chunk_text(self, text: str):
-        ids = self.tokenizer(text, add_special_tokens=False)["input_ids"]
-        stride = self.max_input_tokens - self.chunk_overlap
-        chunks = []
-        for start in range(0, len(ids), stride):
-            end = start + self.max_input_tokens
-            chunk_ids = ids[start:end]
-            if not chunk_ids:
-                break
-            chunks.append(self.tokenizer.decode(chunk_ids, skip_special_tokens=True))
-        return chunks
+    def _chunk_text(self, text: str) -> list[str]:
+        ids = self._token_ids(text)
+        stride = self.max_input_tokens - CHUNK_OVERLAP_TOKENS
+        return [
+            self.tokenizer.decode(ids[start : start + self.max_input_tokens], skip_special_tokens=True)
+            for start in range(0, max(len(ids) - CHUNK_OVERLAP_TOKENS, 1), stride)
+        ]
+
+    def _summarize(self, texts: list[str]) -> list[str]:
+        outputs = self.pipe(texts, batch_size=4, **self.gen_kwargs)
+        return [o["summary_text"].strip() for o in outputs]
 
     def predict(self, text: str) -> str:
-        if self._token_len(text) > self.max_input_tokens:
-            chunks = self._chunk_text(text)
-            partials = [
-                self.pipe(c, **self.gen_kwargs)[0]["summary_text"].strip()
-                for c in chunks
-            ]
-            joined = "\n".join(partials)
-            return self.pipe(joined, **self.gen_kwargs)[0]["summary_text"].strip()
-        return self.pipe(text, **self.gen_kwargs)[0]["summary_text"].strip()
+        # Map: summarize each window. Reduce: summarize the joined partial summaries,
+        # repeating while they still exceed the model's context window.
+        for _ in range(MAX_REDUCE_ROUNDS):
+            if len(self._token_ids(text)) <= self.max_input_tokens:
+                break
+            text = "\n".join(self._summarize(self._chunk_text(text)))
+        return self._summarize([text])[0].replace("<n>", " ")

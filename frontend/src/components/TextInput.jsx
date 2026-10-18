@@ -1,43 +1,40 @@
-import { useEffect, useRef } from "react";
-import PrimaryButton from "./PrimaryButton";   // ✅ import your existing button
-import "./TextInput.css";
+import PrimaryButton from "./PrimaryButton";
 
-export default function TextInput({ value, onChange, placeholder, onEnter, loading = false }) {
-  const ref = useRef(null);
+const MIN_CHARS = 50;
 
-  // Auto-resize the textarea
-  useEffect(() => {
-    const ta = ref.current;
-    if (!ta) return;
-    ta.style.height = "auto";
-    ta.style.height = Math.min(ta.scrollHeight, 200) + "px";
-  }, [value]);
+function wordCount(text) {
+  return text.trim() ? text.trim().split(/\s+/).length : 0;
+}
+
+export default function TextInput({ value, onChange, onSubmit, loading }) {
+  const ready = value.trim().length >= MIN_CHARS && !loading;
 
   const handleKeyDown = (e) => {
-    // Shift+Enter = newline, Enter = submit
-    if (e.key === "Enter" && !e.shiftKey) {
+    // Ctrl/Cmd+Enter submits; plain Enter inserts a newline as usual.
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && ready) {
       e.preventDefault();
-      if (value.trim() && !loading) {
-        onEnter?.();
-      }
+      onSubmit();
     }
   };
 
   return (
-    <div className="chatbar">
+    <div className="space-y-3">
       <textarea
-        ref={ref}
         value={value}
-        placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={handleKeyDown}
+        rows={10}
+        placeholder="Paste the abstract, introduction or full text of a paper…"
+        className="w-full resize-y rounded-xl border border-slate-300 bg-white p-4 text-sm leading-relaxed shadow-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-900"
       />
-      <PrimaryButton
-        disabled={!value.trim() || loading}
-        onClick={() => !loading && value.trim() && onEnter?.()}
-      >
-        {loading ? "Summarizing…" : "Summarize"}
-      </PrimaryButton>
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm text-slate-500">
+          {wordCount(value).toLocaleString()} words · Ctrl+Enter to submit
+        </span>
+        <PrimaryButton disabled={!ready} onClick={onSubmit}>
+          Summarize text
+        </PrimaryButton>
+      </div>
     </div>
   );
 }

@@ -1,12 +1,37 @@
-# React + Vite
+# Research Summarizer – Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React 19 + Vite + Tailwind CSS v4 single-page app for the Research Summarizer API.
 
-Currently, two official plugins are available:
+## Development
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+```bash
+npm install
+npm run dev        # http://localhost:5173
+```
 
-## Expanding the ESLint configuration
+The dev server proxies `/api/*` to the FastAPI backend on `http://localhost:8080`
+(see `vite.config.js`), so start the backend first with `python app.py` from the repo root.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+To call a backend hosted elsewhere, set `VITE_API_URL`:
+
+```bash
+VITE_API_URL=https://my-backend.example.com npm run dev
+```
+
+## Production build
+
+```bash
+npm run build      # outputs dist/
+```
+
+When `frontend/dist` exists, FastAPI serves it at `/`, so the Docker image ships the UI and API as one service.
+
+## Structure
+
+```
+src/
+├── pages/Home.jsx          # tabs (PDF / text), result + loading states
+├── components/             # Layout, PdfUpload, TextInput, SummaryCard, LoadingCard, ErrorBanner, PrimaryButton
+├── hooks/useSummarize.js   # request state, validation, cancellation
+└── services/api.js         # axios client + error formatting
+```

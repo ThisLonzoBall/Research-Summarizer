@@ -1,41 +1,40 @@
+import { useRef, useState } from "react";
+import axios from "axios";
+import { errorMessage, summarizePdf, summarizeText } from "../services/api";
 
-import { useState } from "react";
-import api from "../services/api";
+const MAX_PDF_MB = 20;
 
-export default function useSummarizePdf() {
+export default function useSummarize() {
   const [loading, setLoading] = useState(false);
-  const [summary, setSummary] = useState("");
+  const [result, setResult] = useState(null);
   const [error, setError] = useState("");
+  const controller = useRef(null);
 
-  const summarizePdf = async (file) => {
-    if (!file) {
-      setError("Please select a PDF file.");
-      return;
-    }
-    if (file.type !== "application/pdf") {
-      setError("Only PDF files are allowed.");
-      return;
-    }
-
+  const run = async (request) => {
+    controller.current?.abort();
+    controller.current = new AbortController();
     setLoading(true);
     setError("");
-    setSummary("");
-
+    setResult(null);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const { data } = await api.post("/pdf/summary", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-
-      setSummary(data?.summary ?? JSON.stringify(data));
-    } catch (e) {
-      setError(e?.response?.data?.detail || e.message || "Upload failed");
+      setResult(await request(controller.current.signal));
+    } catch (err) {
+      if (!axios.isCancel(err)) setError(errorMessage(err));
     } finally {
       setLoading(false);
     }
   };
 
-  return { loading, summary, error, summarizePdf, setError, setSummary };
+  const fromPdf = (file) => {
+    if (!file) return setError("Please choose a PDF file.");
+    if (file.type !== "application/pdf") return setError("Only PDF files are supported.");
+    if (file.size > MAX_PDF_MB * 1024 * 1024) return setError(`PDFs must be under ${MAX_PDF_MB}MB.`);
+    return run((signal) => summarizePdf(file, signal));
+  };
+
+  const fromText = (text) => run((signal) => summarizeText(text, signal));
+
+  const cancel = () => controller.current?.abort();
+
+  return { loading, result, error, setError, fromPdf, fromText, cancel };
 }

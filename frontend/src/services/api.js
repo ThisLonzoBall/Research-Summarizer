@@ -1,9 +1,27 @@
-import axios from 'axios';
+import axios from "axios";
 
-// Create an Axios instance with your backend base URL
+// Empty base URL = same origin: the Vite dev server proxies /api to FastAPI,
+// and in production FastAPI serves this app itself. Override with VITE_API_URL.
 const api = axios.create({
-  baseURL: 'http://localhost:8080',  // FastAPI backend URL
+  baseURL: import.meta.env.VITE_API_URL ?? "",
+  timeout: 10 * 60 * 1000, // long PDFs on CPU can take minutes
 });
 
-// Export the Axios instance
-export default api;
+export function summarizeText(text, signal) {
+  return api.post("/api/summarize", { text }, { signal }).then((r) => r.data);
+}
+
+export function summarizePdf(file, signal) {
+  const form = new FormData();
+  form.append("file", file);
+  return api.post("/api/summarize/pdf", form, { signal }).then((r) => r.data);
+}
+
+export function errorMessage(err) {
+  const detail = err?.response?.data?.detail;
+  if (Array.isArray(detail)) return detail.map((d) => d.msg).join("; ");
+  if (detail) return detail;
+  if (err?.code === "ECONNABORTED") return "The request timed out. Try a shorter document.";
+  if (err?.code === "ERR_NETWORK") return "Can't reach the summarization server. Is the backend running?";
+  return err?.message || "Something went wrong.";
+}

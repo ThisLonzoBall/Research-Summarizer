@@ -1,0 +1,14 @@
+services:
+  app:
+    build: .
+    ports:
+      - "7860:7860"
+    environment:
+      # Use a Hub repo id, or mount a local model and point at its path.
+      MODEL_ID: ${MODEL_ID:-google/pegasus-cnn_dailymail}
+    volumes:
+      # Cache downloaded model weights between container restarts.
+      - hf-cache:/home/user/.cache/huggingface
+
+volumes:
+  hf-cache:

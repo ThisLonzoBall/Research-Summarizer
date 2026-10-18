@@ -1,0 +1,50 @@
+name: Deploy to Hugging Face Spaces
+
+# Pushes a snapshot of main to the Space after CI passes.
+# Requires: repository secret HF_TOKEN (write access) and variable HF_SPACE (e.g. "username/research-summarizer").
+on:
+  workflow_run:
+    workflows: [CI]
+    branches: [main]
+    types: [completed]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Add Space metadata to README
+        # Spaces read their config from README front matter; keep it out of the GitHub README.
+        run: |
+          cat - README.md > README.space.md <<'EOF'
+          ---
+          title: Research Summarizer
+          emoji: 📄
+          colorFrom: indigo
+          colorTo: blue
+          sdk: docker
+          app_port: 7860
+          pinned: false
+          license: mit
+          short_description: Summarize research papers with Pegasus fine-tuned on arXiv
+          ---
+
+          EOF
+          mv README.space.md README.md
+
+      - name: Push snapshot to Space
+        # An orphan commit avoids pushing history, which contains large files Spaces reject.
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE: ${{ vars.HF_SPACE }}
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git checkout --orphan space-deploy
+          git add -A
+          git commit -q -m "Deploy ${GITHUB_SHA::7}"
+          HF_USER="${HF_SPACE%%/*}"
+          git push --force "https://${HF_USER}:${HF_TOKEN}@huggingface.co/spaces/${HF_SPACE}" space-deploy:main

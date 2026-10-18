@@ -1,12 +1,8 @@
-from src.ResearchSummarizer.config.configuration import ConfigurationManager
-from src.ResearchSummarizer.components.model_trainer import ModelTrainer
-from src.ResearchSummarizer.logging import logger
+from ResearchSummarizer.components.model_trainer import ModelTrainer
+from ResearchSummarizer.config.configuration import ConfigurationManager
+
 
 class ModelTrainerTrainingPipeline:
-    def __init__(self):
-        pass
-    def initiate_model_trainer(self):
-        config = ConfigurationManager()
-        model_trainer_config = config.get_model_trainer_config()
-        model_trainer = ModelTrainer(config=model_trainer_config)
-        model_trainer.train()
+    def run(self) -> None:
+        config = ConfigurationManager().get_model_trainer_config()
+        ModelTrainer(config).train()

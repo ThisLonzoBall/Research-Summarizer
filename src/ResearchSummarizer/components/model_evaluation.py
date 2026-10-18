@@ -1,72 +1,67 @@
-from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
-from datasets import load_from_disk
+import json
+
 import evaluate
-import torch
 import pandas as pd
+import torch
+from datasets import load_from_disk
 from tqdm import tqdm
-from src.ResearchSummarizer.entity import ModelEvaluationConfig
+from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+
+from ResearchSummarizer.entity import ModelEvaluationConfig
+from ResearchSummarizer.logging import logger
+
+ROUGE_KEYS = ["rouge1", "rouge2", "rougeL", "rougeLsum"]
+
 
 class ModelEvaluation:
     def __init__(self, config: ModelEvaluationConfig):
         self.config = config
-    def  generate_batch_sized_chunks(self, list_of_elements, batch_size):
-        for i in range(0, len(list_of_elements), batch_size):
-            yield list_of_elements[i: i+ batch_size]
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    def calculate_metric_on_test_ds(self, dataset, metric, model, tokenizer,
-                                    batch_size=16, device="cuda" if torch.cuda.is_available() else "cpu",
-                                    column_text = "article",
-                                    column_summary = "highlights"):
-        article_batches = list(self.generate_batch_sized_chunks(dataset[column_text], batch_size))
-        target_batches = list(self.generate_batch_sized_chunks(dataset[column_summary], batch_size))
+    @staticmethod
+    def _batches(items: list, batch_size: int):
+        for i in range(0, len(items), batch_size):
+            yield items[i : i + batch_size]
 
-        for article_batch, target_batch in tqdm(
-            zip(article_batches, target_batches), total=len(article_batches)
+    def score_model(self, model_name_or_path: str, articles: list[str], references: list[str]) -> dict:
+        tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
+        model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path).to(self.device).eval()
+        rouge = evaluate.load("rouge")
+
+        batch_size = self.config.batch_size
+        for article_batch, reference_batch in tqdm(
+            zip(self._batches(articles, batch_size), self._batches(references, batch_size)),
+            total=-(-len(articles) // batch_size),
+            desc=str(model_name_or_path),
         ):
-            inputs = tokenizer(article_batch, max_length=1024, truncation=True,
-                            padding="max_length", return_tensors="pt")
+            inputs = tokenizer(
+                article_batch,
+                max_length=self.config.max_input_length,
+                truncation=True,
+                padding=True,
+                return_tensors="pt",
+            ).to(self.device)
+            with torch.no_grad():
+                outputs = model.generate(**inputs, **self.config.generation)
+            predictions = tokenizer.batch_decode(outputs, skip_special_tokens=True)
+            predictions = [" ".join(p.split()) for p in predictions]
+            rouge.add_batch(predictions=predictions, references=reference_batch)
 
-            summaries = model.generate(input_ids= inputs["input_ids"].to(device),
-                                       attention_mask= inputs["attention_mask"].to(device),
-                                       length_penalty= 0.8, num_beams=8, max_length=128)
-            
-            decoded_summaries = [tokenizer.decode(
-                                s,
-                                skip_special_tokens=True,
-                                clean_up_tokenization_spaces=True  
-                                )
-                                for s in summaries]
-            
-            decoded_summaries = [" ".join(d.split()) for d in decoded_summaries]
-                                           
-            
-            
-            metric.add_batch(predictions= decoded_summaries, references= target_batch)
+        scores = rouge.compute(use_stemmer=True)
+        return {k: round(scores[k] * 100, 2) for k in ROUGE_KEYS}
 
-        score = metric.compute(use_stemmer=True)
-        return score 
-    def evaluate(self):
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        tokenizer = AutoTokenizer.from_pretrained(self.config.tokenizer_path)
-        model_pegasus = AutoModelForSeq2SeqLM.from_pretrained(self.config.model_path).to(device)
+    def evaluate(self) -> dict:
+        test = load_from_disk(self.config.data_path)["test"]
+        test = test.select(range(min(self.config.num_samples, len(test))))
+        articles, references = test["article"], test["abstract"]
 
-        dataset_samsum_pt = load_from_disk(self.config.data_path)
+        results = {
+            "base": self.score_model(self.config.base_model, articles, references),
+            "fine-tuned": self.score_model(str(self.config.model_path), articles, references),
+        }
+        logger.info(f"ROUGE on {len(test)} test papers: {results}")
 
-        rouge_names = ["rouge1", "rouge2", "rougeL", "rougeLsum"]
-
-        rouge_metric = evaluate.load('rouge')
-
-        #rouge_metric = rouge_metric
-
-        score = self.calculate_metric_on_test_ds(
-        dataset_samsum_pt['test'][0:10],
-        rouge_metric, model_pegasus, tokenizer,
-        batch_size=2,
-        column_text="article",
-        column_summary="abstract"  
-    )
-        
-        rouge_dict = {rn:score[rn] for rn in rouge_names}
-
-        df= pd.DataFrame(rouge_dict, index= ['pegasus'])
-        df.to_csv(self.config.metric_file_name, index= False )
+        with open(self.config.metric_file_name, "w", encoding="utf-8") as f:
+            json.dump({"num_samples": len(test), "scores": results}, f, indent=2)
+        pd.DataFrame(results).T.rename_axis("model").to_csv(self.config.metric_file_name.with_suffix(".csv"))
+        return results

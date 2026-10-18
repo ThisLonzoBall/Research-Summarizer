@@ -27,8 +27,9 @@ def resolve_model_id() -> str:
 class PredictionPipeline:
     """Summarizes arbitrarily long text with map-reduce over overlapping token windows."""
 
-    def __init__(self, model_id: str | None = None, num_beams: int = 4, max_new_tokens: int = 256,
-                 length_penalty: float = 0.8):
+    def __init__(
+        self, model_id: str | None = None, num_beams: int = 4, max_new_tokens: int = 256, length_penalty: float = 0.8
+    ):
         self.model_id = model_id or resolve_model_id()
         use_cuda = torch.cuda.is_available()
         logger.info(f"Loading summarization model {self.model_id} on {'cuda' if use_cuda else 'cpu'}")

@@ -30,7 +30,7 @@ class ModelEvaluation:
 
         batch_size = self.config.batch_size
         for article_batch, reference_batch in tqdm(
-            zip(self._batches(articles, batch_size), self._batches(references, batch_size)),
+            zip(self._batches(articles, batch_size), self._batches(references, batch_size), strict=True),
             total=-(-len(articles) // batch_size),
             desc=str(model_name_or_path),
         ):
